@@ -1,6 +1,8 @@
+from django import forms
 from django.contrib import admin
 
-from .models import Mesa
+from .models import Cliente, Mesa
+from .validators import normalizar_telefono
 
 
 @admin.register(Mesa)
@@ -8,6 +10,28 @@ class MesaAdmin(admin.ModelAdmin):
     list_display = ("numero", "capacidad", "activa")
     list_filter = ("activa",)
     ordering = ("numero",)
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+class ClienteAdminForm(forms.ModelForm):
+    telefono = forms.CharField(label="Teléfono", strip=False)
+
+    class Meta:
+        model = Cliente
+        fields = ("nombre", "telefono", "correo")
+
+    def clean_telefono(self):
+        return normalizar_telefono(self.cleaned_data["telefono"])
+
+
+@admin.register(Cliente)
+class ClienteAdmin(admin.ModelAdmin):
+    form = ClienteAdminForm
+    list_display = ("nombre", "telefono")
+    search_fields = ("nombre", "telefono")
+    ordering = ("nombre", "id")
 
     def has_delete_permission(self, request, obj=None):
         return False
