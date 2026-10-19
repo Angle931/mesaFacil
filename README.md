@@ -106,6 +106,8 @@ copy .env.example .env
 El archivo `.env` debe contener una configuración similar a:
 
 ```env
+SECRET_KEY=replace_with_generated_local_secret_key
+
 POSTGRES_DB=mesafacil
 POSTGRES_USER=mesafacil_user
 POSTGRES_PASSWORD=change_me
@@ -113,6 +115,16 @@ POSTGRES_PORT=5432
 
 DATABASE_URL=postgresql://mesafacil_user:change_me@localhost:5432/mesafacil
 ```
+
+Genera una clave local nueva con el entorno virtual activado:
+
+```cmd
+python -B -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
+```
+
+Copia el resultado en tu archivo `.env`, reemplazando el placeholder de `SECRET_KEY`. Encierra el valor entre comillas simples para conservar caracteres especiales. Si ya tienes un `.env`, agrega únicamente esta variable sin sobrescribir las demás.
+
+Django carga este archivo mediante `python-dotenv` y requiere una variable `SECRET_KEY` no vacía; si falta, el inicio falla con un mensaje explícito.
 
 El valor utilizado en `POSTGRES_PASSWORD` debe coincidir con la contraseña incluida en `DATABASE_URL`.
 

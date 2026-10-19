@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 
 import dj_database_url
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 """
@@ -25,7 +26,11 @@ load_dotenv(BASE_DIR / ".env")
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-hzz#yvidm&$(i8j7ig7)u7c09=3tfpu2#hi+5*v=)@8kajoqs1'
+SECRET_KEY = os.environ.get("SECRET_KEY")
+if not SECRET_KEY:
+    raise ImproperlyConfigured(
+        "La variable de entorno SECRET_KEY es obligatoria y no puede estar vacía."
+    )
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
