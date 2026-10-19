@@ -203,3 +203,8 @@ Esta combinación proporciona una base sencilla y suficientemente robusta para d
 - Crear las vistas y plantillas para los usuarios.
 - Agregar pruebas automatizadas.
 - Preparar el despliegue en Render.
+
+## Documentación
+
+- [Requisitos funcionales y reglas de negocio](docs/requirements.md)
+- `AGENTS.md`: instrucciones de desarrollo para asistentes de programación.
