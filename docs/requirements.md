@@ -316,16 +316,38 @@ Completado:
 - Migraciones iniciales de Django.
 - Superusuario administrativo.
 - Repositorio Git y GitHub.
+- Modelos `Mesa`, `Cliente` y `Reserva` implementados.
+- Migraciones de `reservas` `0001_initial`, `0002_cliente` y `0003_reserva`
+  existentes y aplicadas en PostgreSQL.
+- Validaciones, relaciones protegidas y restricciones del dominio,
+  incluida la unicidad condicional de reservas activas por mesa y turno.
+- Consulta de disponibilidad.
+- Registro transaccional de cliente y reserva con asignación automática
+  de la mesa disponible de menor capacidad suficiente y desempate por
+  identificador, con hasta cinco intentos ante colisiones reales del código.
+- Modificación y reprogramación transaccional mediante servicios, con
+  reasignación automática o mesa explícita y exclusión de la propia reserva.
+- Cambios de estado mediante servicios, con transiciones validadas,
+  operaciones idempotentes y conservación del código de confirmación.
+- Protección del historial: no se permite modificar la ocupación en estados
+  finales ni una vez alcanzado el inicio reservado; se permiten correcciones
+  de contacto y cambios de estado válidos.
+- Actualización atómica de contacto y copy-on-write para clientes compartidos,
+  sin copias cuando los datos normalizados son equivalentes y sin reutilización
+  automática por teléfono.
+- Pruebas funcionales y concurrentes ejecutadas satisfactoriamente sobre
+  PostgreSQL: 115 pruebas en total, incluidas 11 de concurrencia con conexiones
+  independientes.
+- `Mesa` y `Cliente` registrados en Django Admin; `Reserva` permanece
+  en modo de consulta, sin altas, modificaciones ni eliminación.
 
-Siguiente etapa:
+Pendiente:
 
-1. Implementar `Cliente`.
-2. Implementar `Mesa`.
-3. Implementar `Reserva`.
-4. Crear relaciones y restricciones.
-5. Crear y aplicar migraciones.
-6. Registrar los modelos en Django Admin.
-7. Implementar pruebas de las reglas principales.
+- Integración de escritura de reservas en Django Admin mediante servicios.
+- Flujo público de disponibilidad, registro y confirmación, con sus
+  formularios, vistas, URLs y plantillas.
+- Verificación del requisito de rendimiento bajo veinte usuarios simultáneos.
+- Despliegue en Render.
 
 ## 10. Decisiones pendientes
 
