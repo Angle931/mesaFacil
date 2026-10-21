@@ -1,11 +1,18 @@
+from datetime import datetime, time, timedelta
+from unittest.mock import patch
+
 from django.contrib import admin
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
+from django.db.models.deletion import ProtectedError
 from django.test import RequestFactory, SimpleTestCase, TestCase
+from django.utils import timezone
 
-from .admin import ClienteAdmin, ClienteAdminForm, MesaAdmin
-from .models import Cliente, Mesa
+from .admin import ClienteAdmin, ClienteAdminForm, MesaAdmin, ReservaAdmin
+from .codigos import ALFABETO_CODIGO, generar_codigo_confirmacion
+from .horarios import HORARIOS
+from .models import Cliente, Mesa, Reserva
 from .validators import normalizar_telefono
 
 
@@ -243,3 +250,245 @@ class ClienteAdminTests(TestCase):
         self.assertFalse(cliente_admin.has_delete_permission(request))
         self.assertFalse(cliente_admin.has_delete_permission(request, cliente))
         self.assertNotIn("delete_selected", cliente_admin.get_actions(request))
+
+
+class CodigoReservaTests(SimpleTestCase):
+    def test_generacion_longitud_y_alfabeto(self):
+        codigo = generar_codigo_confirmacion()
+        self.assertEqual(len(codigo), 16)
+        self.assertTrue(set(codigo) <= set(ALFABETO_CODIGO))
+
+
+class ReservaTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.mesa = Mesa.objects.create(numero="A1", capacidad=4)
+        cls.cliente = Cliente.objects.create(nombre="Ana", telefono="+50588881234")
+
+    def setUp(self):
+        self.ahora = timezone.make_aware(datetime(2030, 5, 10, 13), timezone.get_default_timezone())
+        reloj = patch("reservas.models.timezone.now", return_value=self.ahora)
+        reloj.start()
+        self.addCleanup(reloj.stop)
+        self.fecha = self.ahora.date() + timedelta(days=1)
+
+    def nueva(self, **cambios):
+        datos = dict(cliente=self.cliente, mesa=self.mesa, fecha=self.fecha, hora=time(12), cantidad_personas=2)
+        datos.update(cambios)
+        return Reserva(**datos)
+
+    def guardar(self, **cambios):
+        reserva = self.nueva(**cambios)
+        reserva.full_clean()
+        reserva.save()
+        return reserva
+
+    def test_crear_reserva_y_relaciones(self):
+        reserva = self.guardar()
+        reserva.refresh_from_db()
+        self.assertEqual(reserva.estado, Reserva.Estado.PENDIENTE)
+        self.assertEqual(reserva.cliente, self.cliente)
+        self.assertEqual(reserva.mesa, self.mesa)
+        self.assertEqual(self.cliente.reservas.get(), reserva)
+        self.assertEqual(self.mesa.reservas.get(), reserva)
+        self.assertEqual(str(reserva), f"Reserva {reserva.codigo_confirmacion}")
+
+    def test_campos_obligatorios(self):
+        for campo in ("cliente", "mesa", "fecha", "hora", "cantidad_personas", "estado"):
+            with self.subTest(campo=campo):
+                with self.assertRaises(ValidationError):
+                    self.nueva(**{campo: None}).full_clean()
+
+    def test_proteccion_cliente_y_mesa(self):
+        self.guardar()
+        for objeto in (self.cliente, self.mesa):
+            with self.subTest(modelo=type(objeto).__name__):
+                with self.assertRaises(ProtectedError):
+                    objeto.delete()
+
+    def test_capacidad_limite_y_cantidad_uno(self):
+        self.guardar(cantidad_personas=1)
+        self.guardar(cantidad_personas=4, hora=time(13))
+
+    def test_cantidad_invalida_django_y_postgresql(self):
+        for cantidad in (0, -1):
+            with self.subTest(cantidad=cantidad):
+                with self.assertRaises(ValidationError):
+                    self.nueva(cantidad_personas=cantidad).full_clean()
+                with self.assertRaises(IntegrityError), transaction.atomic():
+                    self.nueva(cantidad_personas=cantidad).save()
+
+    def test_mesa_inactiva_y_capacidad_insuficiente(self):
+        with self.assertRaises(ValidationError) as error:
+            self.nueva(cantidad_personas=5).full_clean()
+        self.assertIn("cantidad_personas", error.exception.message_dict)
+        Mesa.objects.filter(pk=self.mesa.pk).update(activa=False)
+        with self.assertRaises(ValidationError) as error:
+            self.nueva().full_clean()
+        self.assertIn("mesa", error.exception.message_dict)
+
+    def test_horarios_aprobados_independientes(self):
+        self.assertEqual(HORARIOS, tuple(time(hora) for hora in range(12, 22)))
+        for hora in HORARIOS:
+            self.guardar(hora=hora)
+        self.assertEqual(Reserva.objects.count(), 10)
+
+    def test_horarios_invalidos_django_y_postgresql(self):
+        for hora in (time(11), time(22), time(12, 30), time(12, 0, 1)):
+            with self.subTest(hora=hora):
+                with self.assertRaises(ValidationError):
+                    self.nueva(hora=hora).full_clean()
+                with self.assertRaises(IntegrityError), transaction.atomic():
+                    self.nueva(hora=hora).save()
+
+    def test_creacion_solo_futura_en_hora_local(self):
+        for fecha, hora in ((self.ahora.date() - timedelta(days=1), time(21)), (self.ahora.date(), time(12)), (self.ahora.date(), time(13))):
+            with self.subTest(fecha=fecha, hora=hora):
+                with self.assertRaises(ValidationError):
+                    self.nueva(fecha=fecha, hora=hora).full_clean()
+        self.guardar(fecha=self.ahora.date(), hora=time(14))
+
+    def test_reprogramacion_pasada_rechazada(self):
+        reserva = self.guardar()
+        reserva.fecha = self.ahora.date()
+        reserva.hora = time(12)
+        with self.assertRaises(ValidationError):
+            reserva.full_clean()
+
+    def test_estados_invalidos_django_y_postgresql(self):
+        for estado in ("", "OTRO"):
+            with self.subTest(estado=estado):
+                with self.assertRaises(ValidationError):
+                    self.nueva(estado=estado).full_clean()
+                with self.assertRaises(IntegrityError), transaction.atomic():
+                    self.nueva(estado=estado).save()
+
+    def test_transiciones_aprobadas_y_rechazadas(self):
+        permitidas = {
+            "PENDIENTE": {"CONFIRMADA", "CANCELADA"},
+            "CONFIRMADA": {"COMPLETADA", "CANCELADA"},
+            "COMPLETADA": set(), "CANCELADA": set(),
+        }
+        # Datos históricos para que COMPLETADA sea temporalmente válida.
+        for origen in Reserva.Estado.values:
+            for destino in Reserva.Estado.values:
+                with self.subTest(origen=origen, destino=destino):
+                    reserva = self.nueva(fecha=self.ahora.date() - timedelta(days=1), estado=origen)
+                    reserva.save()
+                    reserva.estado = destino
+                    if destino == origen or destino in permitidas[origen]:
+                        reserva.full_clean()
+                    else:
+                        with self.assertRaises(ValidationError):
+                            reserva.full_clean()
+                    reserva.delete()
+
+    def test_no_completar_antes_del_inicio(self):
+        reserva = self.guardar(estado=Reserva.Estado.CONFIRMADA)
+        reserva.estado = Reserva.Estado.COMPLETADA
+        with self.assertRaises(ValidationError):
+            reserva.full_clean()
+        inicio = timezone.make_aware(datetime.combine(reserva.fecha, reserva.hora), timezone.get_default_timezone())
+        with patch("reservas.models.timezone.now", return_value=inicio):
+            reserva.full_clean()
+            reserva.save()
+
+    def test_cancelar_pasada_sin_revalidar_politica_de_mesas(self):
+        reserva = self.guardar()
+        Mesa.objects.filter(pk=self.mesa.pk).update(activa=False, capacidad=1)
+        with patch("reservas.models.timezone.now", return_value=self.ahora + timedelta(days=2)):
+            reserva.estado = Reserva.Estado.CANCELADA
+            reserva.full_clean()
+            reserva.save()
+
+    def test_conflictos_activos_django_y_postgresql(self):
+        for primero in ("PENDIENTE", "CONFIRMADA"):
+            for segundo in ("PENDIENTE", "CONFIRMADA"):
+                with self.subTest(primero=primero, segundo=segundo):
+                    reserva = self.guardar(estado=primero)
+                    with self.assertRaises(ValidationError):
+                        self.nueva(estado=segundo).full_clean()
+                    with self.assertRaises(IntegrityError), transaction.atomic():
+                        self.nueva(estado=segundo).save()
+                    reserva.delete()
+
+    def test_estados_no_bloqueantes_permiten_otras_reservas(self):
+        for estado in ("CANCELADA", "COMPLETADA"):
+            self.nueva(estado=estado).save()
+        self.guardar()
+
+    def test_cancelacion_libera_turno(self):
+        reserva = self.guardar()
+        reserva.estado = Reserva.Estado.CANCELADA
+        reserva.full_clean()
+        reserva.save()
+        self.guardar()
+
+    def test_sin_conflicto_con_otra_fecha_o_mesa(self):
+        self.guardar()
+        self.guardar(fecha=self.fecha + timedelta(days=1))
+        otra = Mesa.objects.create(numero="A2", capacidad=4)
+        self.guardar(mesa=otra)
+
+    def test_edicion_sin_conflicto_con_si_misma(self):
+        reserva = self.guardar()
+        reserva.cantidad_personas = 3
+        reserva.full_clean()
+        reserva.save()
+
+    def test_reasignacion_conflictiva(self):
+        self.guardar()
+        reserva = self.guardar(hora=time(13))
+        reserva.hora = time(12)
+        with self.assertRaises(ValidationError):
+            reserva.full_clean()
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            reserva.save()
+
+    def test_codigo_estable_y_colision_sin_reintentos(self):
+        reserva = self.guardar()
+        codigo = reserva.codigo_confirmacion
+        reserva.full_clean()
+        reserva.save()
+        reserva.refresh_from_db()
+        self.assertEqual(reserva.codigo_confirmacion, codigo)
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            self.nueva(hora=time(13), codigo_confirmacion=codigo).save()
+        reserva.codigo_confirmacion = "A" * 16 if codigo != "A" * 16 else "B" * 16
+        with self.assertRaises(ValidationError):
+            reserva.full_clean()
+
+    def test_codigo_invalido_django_y_postgresql(self):
+        for codigo in ("", "A" * 15, "a" * 16, "0" * 16):
+            with self.subTest(codigo=codigo):
+                with self.assertRaises(ValidationError):
+                    self.nueva(codigo_confirmacion=codigo).full_clean()
+                with self.assertRaises(IntegrityError), transaction.atomic():
+                    self.nueva(codigo_confirmacion=codigo).save()
+
+
+class ReservaAdminTests(TestCase):
+    def test_admin_solo_consulta(self):
+        modelo_admin = admin.site.get_model_admin(Reserva)
+        self.assertIsInstance(modelo_admin, ReservaAdmin)
+        usuario = get_user_model().objects.create_superuser(username="admin", password="test-only")
+        request = RequestFactory().get("/admin/reservas/reserva/")
+        request.user = usuario
+        self.assertTrue(modelo_admin.has_view_permission(request))
+        self.assertFalse(modelo_admin.has_add_permission(request))
+        self.assertFalse(modelo_admin.has_change_permission(request))
+        self.assertFalse(modelo_admin.has_delete_permission(request))
+        self.assertEqual(modelo_admin.get_actions(request), {})
+
+        cliente = Cliente.objects.create(nombre="Ana", telefono="+50588881234")
+        mesa = Mesa.objects.create(numero="A1", capacidad=4)
+        reserva = Reserva.objects.create(cliente=cliente, mesa=mesa, fecha=timezone.localdate() + timedelta(days=1), hora=time(12), cantidad_personas=2)
+        self.client.force_login(usuario)
+        detalle = f"/admin/reservas/reserva/{reserva.pk}/change/"
+        self.assertEqual(self.client.get("/admin/reservas/reserva/").status_code, 200)
+        self.assertEqual(self.client.get(detalle).status_code, 200)
+        self.assertEqual(self.client.post(detalle, {"estado": "CANCELADA"}).status_code, 403)
+        self.assertEqual(self.client.post("/admin/reservas/reserva/add/", {}).status_code, 403)
+        self.assertEqual(self.client.post(f"/admin/reservas/reserva/{reserva.pk}/delete/", {}).status_code, 403)
+        reserva.refresh_from_db()
+        self.assertEqual(reserva.estado, "PENDIENTE")

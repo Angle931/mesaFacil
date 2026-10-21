@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib import admin
 
-from .models import Cliente, Mesa
+from .models import Cliente, Mesa, Reserva
 from .validators import normalizar_telefono
 
 
@@ -32,6 +32,26 @@ class ClienteAdmin(admin.ModelAdmin):
     list_display = ("nombre", "telefono")
     search_fields = ("nombre", "telefono")
     ordering = ("nombre", "id")
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(Reserva)
+class ReservaAdmin(admin.ModelAdmin):
+    list_display = ("codigo_confirmacion", "fecha", "hora", "mesa", "cantidad_personas", "estado")
+    list_filter = ("fecha", "hora", "estado")
+    search_fields = ("=codigo_confirmacion",)
+    ordering = ("-fecha", "hora")
+    list_select_related = ("mesa", "cliente")
+    readonly_fields = ("codigo_confirmacion", "cliente", "mesa", "fecha", "hora", "cantidad_personas", "estado")
+    actions = None
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
 
     def has_delete_permission(self, request, obj=None):
         return False
