@@ -29,7 +29,7 @@ classDiagram
     }
 
     class Mesa {
-        -int numero
+        -String numero
         -int capacidad
         -Boolean activa
         +verificarDisponibilidad(fecha, hora) boolean
