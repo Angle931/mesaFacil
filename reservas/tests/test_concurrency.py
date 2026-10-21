@@ -11,10 +11,10 @@ from django.db import connection, connections
 from django.test import TransactionTestCase
 from django.utils import timezone
 
-from .exceptions import ConflictoReserva, SinDisponibilidad
-from .models import Cliente, Mesa, Reserva
-from . import services
-from .services import _bloquear_candidatas, cancelar_reserva, modificar_reserva, registrar_reserva
+from ..exceptions import ConflictoReserva, SinDisponibilidad
+from ..models import Cliente, Mesa, Reserva
+from .. import services
+from ..services import _bloquear_candidatas, cancelar_reserva, modificar_reserva, registrar_reserva
 
 
 class RegistroConcurrenteTests(TransactionTestCase):

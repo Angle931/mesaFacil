@@ -9,11 +9,11 @@ from django.db.models.deletion import ProtectedError
 from django.test import RequestFactory, SimpleTestCase, TestCase
 from django.utils import timezone
 
-from .admin import ClienteAdmin, ClienteAdminForm, MesaAdmin, ReservaAdmin
-from .codigos import ALFABETO_CODIGO, generar_codigo_confirmacion
-from .horarios import HORARIOS
-from .models import Cliente, Mesa, Reserva
-from .validators import normalizar_telefono
+from ..admin import ClienteAdmin, ClienteAdminForm, MesaAdmin, ReservaAdmin
+from ..codigos import ALFABETO_CODIGO, generar_codigo_confirmacion
+from ..horarios import HORARIOS
+from ..models import Cliente, Mesa, Reserva
+from ..validators import normalizar_telefono
 
 
 class MesaTests(TestCase):

@@ -6,9 +6,9 @@ from django.db import IntegrityError, transaction
 from django.test import TestCase
 from django.utils import timezone
 
-from .exceptions import ConflictoReserva, GeneracionCodigoAgotada, ReservaNoEncontrada, ReservaServiceError, SinDisponibilidad
-from .models import Cliente, Mesa, Reserva
-from .services import cancelar_reserva, cambiar_estado_reserva, confirmar_reserva, consultar_mesas_disponibles, modificar_reserva, registrar_reserva
+from ..exceptions import ConflictoReserva, GeneracionCodigoAgotada, ReservaNoEncontrada, ReservaServiceError, SinDisponibilidad
+from ..models import Cliente, Mesa, Reserva
+from ..services import cancelar_reserva, cambiar_estado_reserva, confirmar_reserva, consultar_mesas_disponibles, modificar_reserva, registrar_reserva
 
 
 class ServiciosReservaTests(TestCase):
@@ -108,7 +108,7 @@ class ServiciosReservaTests(TestCase):
         self.assertEqual(Cliente.objects.count(), 1)
 
     def test_revalida_actividad_y_capacidad_despues_del_bloqueo(self):
-        from .services import _bloquear_candidatas
+        from ..services import _bloquear_candidatas
 
         for cambios in ({"activa": False}, {"capacidad": 1}):
             with self.subTest(cambios=cambios):
@@ -125,7 +125,7 @@ class ServiciosReservaTests(TestCase):
                 self.assertEqual(Cliente.objects.count(), 0)
 
     def test_revalida_hora_tras_esperar_bloqueo(self):
-        from .services import _bloquear_candidatas
+        from ..services import _bloquear_candidatas
 
         def esperar(cantidad):
             filas = _bloquear_candidatas(cantidad)
@@ -470,7 +470,7 @@ class ModificacionReservaTests(TestCase):
         self.assertEqual(Cliente.objects.count(), 1)
 
     def test_espera_que_alcanza_inicio_impide_modificar(self):
-        from .services import _elegir_mesa_modificacion
+        from ..services import _elegir_mesa_modificacion
 
         def esperar(*args):
             mesa = _elegir_mesa_modificacion(*args)
