@@ -1,0 +1,79 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --ink: #18241f;
+  --muted: #737a72;
+  --paper: #f7f5ef;
+  --card: #fffefa;
+  --green: #254a39;
+  --green-dark: #19372b;
+  --lime: #d4ef83;
+  --line: #e7e6dd;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; color: var(--ink); background: var(--paper); font-family: 'DM Sans', sans-serif; }
+.site-container { max-width: 1120px; }
+.site-nav { min-height: 82px; border-bottom: 1px solid rgba(24, 36, 31, .09); }
+.brand { display: inline-flex; align-items: center; gap: 10px; color: var(--ink); font: 800 20px 'Manrope', sans-serif; letter-spacing: -1px; }
+.brand:hover { color: var(--green); }
+.brand-light { font-weight: 500; }
+.brand-mark { display: grid; width: 32px; height: 32px; place-items: center; border-radius: 50%; color: var(--lime); background: var(--green); font: 800 19px 'Manrope', sans-serif; letter-spacing: -2px; }
+.nav-admin { color: #59645d; font-size: 12px; font-weight: 600; text-decoration: none; }
+.nav-admin span { margin-left: 5px; color: var(--green); }
+.nav-admin:hover { color: var(--green); }
+.hero-section { position: relative; overflow: hidden; padding: 80px 0 88px; }
+.hero-section::before { position: absolute; top: 40px; left: -138px; width: 310px; height: 310px; border: 1px solid rgba(37, 74, 57, .08); border-radius: 50%; content: ''; }
+.hero-copy { padding-bottom: 8px; }
+.eyebrow { display: inline-flex; align-items: center; gap: 9px; color: #6c756d; font-size: 10px; font-weight: 700; letter-spacing: 1.7px; }
+.eyebrow-dot { width: 7px; height: 7px; border-radius: 50%; background: #88a866; box-shadow: 0 0 0 4px rgba(136,168,102,.14); }
+h1, h2 { font-family: 'Manrope', sans-serif; }
+h1 { margin: 23px 0 20px; font-size: clamp(42px, 5.2vw, 65px); font-weight: 600; letter-spacing: -4.5px; line-height: 1.08; }
+h1 span { color: #638356; }
+.hero-lede { max-width: 400px; color: var(--muted); font-size: 15px; line-height: 1.8; }
+.hero-footnote { display: flex; align-items: center; gap: 9px; margin-top: 35px; color: #657067; font-size: 11px; font-weight: 600; }
+.footnote-icon { display: grid; width: 23px; height: 23px; place-items: center; border: 1px solid #cad2c5; border-radius: 50%; color: var(--green); font-size: 13px; }
+.booking-card { position: relative; max-width: 490px; margin-left: auto; padding: 34px 38px 29px; border: 1px solid #eeede5; border-radius: 5px; background: var(--card); box-shadow: 0 22px 65px rgba(31, 46, 37, .08); }
+.card-topline { display: flex; justify-content: space-between; align-items: center; padding-bottom: 23px; border-bottom: 1px solid var(--line); color: #82877f; font-size: 9px; font-weight: 700; letter-spacing: 1.5px; }
+.card-topline span:first-child { display: flex; align-items: center; gap: 8px; }
+.card-topline i { width: 15px; height: 1px; background: #c4c9be; }
+.booking-card h2 { margin: 25px 0 4px; font-size: 25px; font-weight: 700; letter-spacing: -1px; }
+.card-intro { margin-bottom: 24px; color: var(--muted); font-size: 12px; }
+.form-label { margin-bottom: 7px; color: #424d45; font-size: 11px; font-weight: 700; }
+.form-control, .form-select { min-height: 51px; border-color: #e5e5dc; border-radius: 3px; background-color: #fff; color: var(--ink); font-size: 13px; box-shadow: none !important; }
+.form-control:focus, .form-select:focus { border-color: #718e6a; }
+.btn-search { display: flex; justify-content: space-between; align-items: center; min-height: 53px; margin-top: 22px; padding: 0 17px; border: 0; border-radius: 3px; background: var(--green); color: #fff; font-size: 12px; font-weight: 700; text-align: left; }
+.btn-search:hover, .btn-search:focus { background: var(--green-dark); color: #fff; }
+.btn-search span { color: var(--lime); font-size: 19px; }
+.privacy-note { margin: 14px 0 0; color: #83877f; font-size: 10px; text-align: center; }
+.privacy-note span { margin-right: 4px; color: #637b5e; }
+.field-error { margin-top: 5px; color: #a24336; font-size: 11px; }
+.form-alert { padding: 10px 12px; font-size: 12px; }
+.card-caption { display: flex; justify-content: space-between; max-width: 490px; margin: 13px 0 0 auto; color: #8a8e86; font-size: 9px; letter-spacing: .5px; }
+.availability-section { padding: 58px 0 64px; border-top: 1px solid var(--line); background: #eeeee6; }
+.availability-heading { display: flex; align-items: end; justify-content: space-between; margin-bottom: 24px; }
+.availability-heading h2 { margin: 10px 0 0; font-size: clamp(22px, 3vw, 30px); font-weight: 700; letter-spacing: -1.2px; }
+.result-count { padding: 8px 12px; border: 1px solid #d9ddcf; border-radius: 99px; color: var(--green); font-size: 11px; font-weight: 700; }
+.table-option { position: relative; display: flex; min-height: 95px; flex-direction: column; justify-content: center; padding: 20px 22px; border: 1px solid #e0e1d8; border-radius: 4px; background: var(--card); }
+.table-number { font: 700 15px 'Manrope', sans-serif; }
+.table-capacity { margin-top: 4px; color: var(--muted); font-size: 11px; }
+.table-arrow { position: absolute; top: 19px; right: 20px; color: #638356; }
+.availability-hint { margin: 18px 0 0; color: #71796f; font-size: 11px; }
+.site-footer { padding: 22px 0; border-top: 1px solid rgba(24, 36, 31, .09); }
+.site-footer .container { display: flex; justify-content: space-between; color: #858a81; font-size: 9px; font-weight: 600; letter-spacing: .7px; }
+
+@media (max-width: 767.98px) {
+  .site-nav { min-height: 68px; }
+  .hero-section { padding: 54px 0 62px; }
+  .hero-section::before { top: -120px; left: -200px; }
+  h1 { margin-top: 18px; font-size: clamp(43px, 12vw, 58px); letter-spacing: -3.5px; }
+  .hero-footnote { margin-top: 22px; }
+  .booking-card { margin: 0; padding: 27px 22px 23px; }
+  .card-caption { margin-right: 0; }
+  .availability-section { padding: 42px 0 48px; }
+}
+@media (max-width: 380px) {
+  .nav-admin { font-size: 10px; }
+  .booking-card { padding-right: 17px; padding-left: 17px; }
+  .site-footer .container { gap: 12px; font-size: 8px; }
+}

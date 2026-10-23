@@ -1,0 +1,54 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block bodyclass %}{{ block.super }} mesafacil-dashboard{% endblock %}
+{% block content %}
+  <div class="mesafacil-dashboard-wrap">
+    <section class="mesafacil-welcome">
+      <div>
+        <span class="mesafacil-kicker">PANEL DEL RESTAURANTE</span>
+        <h1>Hola, {{ user.get_short_name|default:user.username }}.</h1>
+        <p>Desde aquí puedes consultar las reservas y mantener al día las mesas del restaurante.</p>
+      </div>
+      <div class="welcome-mark" aria-hidden="true">✳</div>
+    </section>
+
+    <div class="mesafacil-section-heading">
+      <div><span class="mesafacil-kicker">GESTIÓN</span><h2>¿Qué necesitas hacer?</h2></div>
+      <span class="mesafacil-current-user">Sesión iniciada como <strong>{{ user.username }}</strong></span>
+    </div>
+
+    {% if app_list %}
+      <div class="mesafacil-app-grid">
+        {% for app in app_list %}
+          {% for model in app.models %}
+            <article class="mesafacil-app-card">
+              <div class="app-card-top">
+                <span class="app-card-icon" aria-hidden="true">
+                  {% if model.object_name == "Reserva" %}⌑{% elif model.object_name == "Mesa" %}▦{% else %}◉{% endif %}
+                </span>
+                {% if model.view_only %}<span class="app-card-mode">SOLO CONSULTA</span>{% endif %}
+              </div>
+              <h3>{{ model.name }}</h3>
+              <p>
+                {% if model.object_name == "Reserva" %}
+                  Revisa las reservas registradas y consulta sus datos y estado.
+                {% elif model.object_name == "Mesa" %}
+                  Registra mesas y actualiza su capacidad o disponibilidad.
+                {% else %}
+                  Consulta la información de contacto asociada a las reservas.
+                {% endif %}
+              </p>
+              <div class="app-card-actions">
+                {% if model.admin_url %}<a class="app-card-primary" href="{{ model.admin_url }}">{% if model.object_name == "Reserva" %}Ver reservas{% else %}Abrir {{ model.name|lower }}{% endif %}<span aria-hidden="true">→</span></a>{% endif %}
+                {% if model.add_url %}<a class="app-card-add" href="{{ model.add_url }}">Añadir</a>{% endif %}
+              </div>
+            </article>
+          {% endfor %}
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="mesafacil-empty-state"><span aria-hidden="true">✳</span><h2>No hay secciones disponibles</h2><p>Tu cuenta todavía no tiene permisos para gestionar estos datos.</p></div>
+    {% endif %}
+  </div>
+{% endblock %}

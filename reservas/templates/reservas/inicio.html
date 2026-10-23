@@ -1,0 +1,97 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7f5ef">
+  <title>MesaFácil | Reserva tu mesa</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="{% static 'reservas/site.css' %}" rel="stylesheet">
+</head>
+<body>
+  <nav class="navbar navbar-expand-lg site-nav">
+    <div class="container site-container">
+      <a class="navbar-brand brand" href="{% url 'inicio' %}" aria-label="MesaFácil, inicio">
+        <span class="brand-mark" aria-hidden="true">m</span><span>mesa<span class="brand-light">fácil</span></span>
+      </a>
+      <a class="nav-admin" href="/admin/">Acceso del restaurante <span aria-hidden="true">↗</span></a>
+    </div>
+  </nav>
+
+  <main>
+    <section class="hero-section">
+      <div class="container site-container">
+        <div class="row align-items-center g-5">
+          <div class="col-lg-6 hero-copy">
+            <span class="eyebrow"><span class="eyebrow-dot"></span> Managua · cocina para compartir</span>
+            <h1>Los buenos<br>momentos <span>empiezan</span><br>en la mesa.</h1>
+            <p class="hero-lede">Encuentra un espacio para tu próxima comida. Elige el día, la hora y cuántos vienen.</p>
+            <div class="hero-footnote"><span class="footnote-icon">✳</span> Sin crear cuenta · Confirmación al instante</div>
+          </div>
+
+          <div class="col-lg-6">
+            <section class="booking-card" aria-labelledby="booking-title">
+              <div class="card-topline"><span>01 <i></i> 02 <i></i> 03</span><span>CONSULTA</span></div>
+              <h2 id="booking-title">Busca tu mesa</h2>
+              <p class="card-intro">Cuéntanos cuándo vienes y revisamos disponibilidad.</p>
+
+              <form method="post" novalidate>
+                {% csrf_token %}
+                {% if form.non_field_errors %}
+                  <div class="alert alert-warning form-alert" role="alert">{{ form.non_field_errors }}</div>
+                {% endif %}
+                <div class="mb-3">
+                  <label class="form-label" for="{{ form.fecha.id_for_label }}">{{ form.fecha.label }}</label>
+                  {{ form.fecha }}
+                  {% for error in form.fecha.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                </div>
+                <div class="row g-3">
+                  <div class="col-7">
+                    <label class="form-label" for="{{ form.hora.id_for_label }}">{{ form.hora.label }}</label>
+                    {{ form.hora }}
+                    {% for error in form.hora.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                  </div>
+                  <div class="col-5">
+                    <label class="form-label" for="{{ form.cantidad_personas.id_for_label }}">{{ form.cantidad_personas.label }}</label>
+                    {{ form.cantidad_personas }}
+                    {% for error in form.cantidad_personas.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                  </div>
+                </div>
+                <button class="btn btn-search w-100" type="submit">Ver mesas disponibles <span aria-hidden="true">→</span></button>
+                <p class="privacy-note"><span aria-hidden="true">♧</span> Tus datos se solicitan más adelante, solo al reservar.</p>
+              </form>
+            </section>
+            <div class="card-caption"><span>Un lugar para encontrarnos.</span><span>MF—01</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    {% if consultado %}
+    <section class="availability-section" aria-live="polite">
+      <div class="container site-container">
+        <div class="availability-heading">
+          <div><span class="eyebrow">TU BÚSQUEDA</span><h2>{% if mesas %}Hay sitio para ustedes.{% else %}No encontramos mesas disponibles.{% endif %}</h2></div>
+          {% if mesas %}<span class="result-count">{{ mesas|length }} {% if mesas|length == 1 %}opción{% else %}opciones{% endif %}</span>{% endif %}
+        </div>
+        {% if mesas %}
+          <div class="row g-3">
+            {% for mesa in mesas %}
+              <div class="col-sm-6 col-lg-4">
+                <article class="table-option"><span class="table-number">Mesa {{ mesa.numero }}</span><span class="table-capacity">Hasta {{ mesa.capacidad }} personas</span><span class="table-arrow" aria-hidden="true">↗</span></article>
+              </div>
+            {% endfor %}
+          </div>
+          <p class="availability-hint">La disponibilidad se confirma nuevamente al registrar la reserva.</p>
+        {% else %}
+          <p class="availability-hint">Prueba con otro horario o fecha para encontrar una opción.</p>
+        {% endif %}
+      </div>
+    </section>
+    {% endif %}
+  </main>
+
+  <footer class="site-footer"><div class="container site-container"><span>Una mesa reúne más que platos.</span><span>MANAGUA, NICARAGUA · 2026</span></div></footer>
+</body>
+</html>
