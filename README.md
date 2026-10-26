@@ -1,222 +1,248 @@
 # MesaFácil
 
-MesaFácil es una aplicación web orientada a la gestión de reservas de mesas para restaurantes. El proyecto busca facilitar el registro, consulta y administración de reservas mediante una interfaz sencilla y un panel administrativo.
-
-Este repositorio contiene el entorno inicial del proyecto, desarrollado como parte de la asignatura de Diseño de Sistemas.
+Aplicación web para gestionar reservas de mesas de un restaurante de Managua,
+desarrollada para la asignatura de Diseño de Sistemas.
 
 ## Estado actual
 
-Actualmente, el proyecto cuenta con:
+- Modelos `Mesa`, `Cliente` y `Reserva` con relaciones protegidas, validaciones y restricciones en PostgreSQL.
+- Turnos independientes de una hora, desde las 12:00 hasta las 21:00.
+- Servicios de disponibilidad, registro, modificación, reprogramación y cambios de estado.
+- Registro atómico de cliente y reserva, sin reutilización automática de clientes por teléfono.
+- Asignación por menor capacidad suficiente y desempate por identificador.
+- Bloqueos transaccionales, unicidad de reservas activas por turno y cinco intentos ante colisiones reales del código.
+- Correcciones de contacto con copy-on-write para clientes compartidos.
+- Django Admin: gestión de mesas y clientes; reservas únicamente para consulta.
+- 115 pruebas funcionales y concurrentes del dominio y servicios sobre PostgreSQL.
+- Ejecución nativa con PostgreSQL en Docker y ejecución completamente contenerizada.
 
-- Proyecto base en Django.
-- Aplicación principal `reservas`.
-- Base de datos PostgreSQL ejecutándose en Docker.
-- Conexión entre Django y PostgreSQL.
-- Migraciones iniciales aplicadas.
-- Panel administrativo de Django habilitado.
-- Configuración mediante variables de entorno.
-- Repositorio publicado en GitHub.
+Continúan pendientes la escritura de reservas desde Admin, el flujo público,
+sus formularios, vistas y plantillas, la evaluación con veinte usuarios
+simultáneos y el despliegue en Render. No se envían correos ni SMS.
 
-Los modelos del dominio, reglas de negocio e interfaces para la gestión de reservas serán incorporados en las siguientes etapas.
+## Arquitectura y tecnologías
 
-## Tecnologías utilizadas
+Monolito modular cliente-servidor con el patrón MVT de Django. `reservas`
+contiene el dominio y los servicios; `config` contiene la configuración.
+No hay frontend independiente ni API REST.
 
 | Tecnología | Uso |
 |---|---|
-| Python 3.13 | Lenguaje principal |
-| Django 5.2 LTS | Framework web y lógica de negocio |
-| PostgreSQL 17 | Base de datos relacional |
-| Docker Compose | Ejecución local de PostgreSQL |
-| Django ORM | Acceso y gestión de datos |
-| Django Admin | Administración interna |
-| Django Templates | Renderizado de interfaces |
-| Bootstrap 5.3 | Diseño visual planificado |
-| Git y GitHub | Control de versiones y repositorio remoto |
+| Python 3.13 y Django 5.2 LTS | Aplicación y Django Templates |
+| PostgreSQL 17 y Psycopg 3 | Persistencia e integridad transaccional |
+| Docker Compose | Servicios locales db y web |
+| Gunicorn | Servidor WSGI dentro del contenedor Linux |
+| WhiteNoise | Estáticos, incluidos los de Admin |
+| Bootstrap 5.3 | Interfaz pública planificada |
 
-Para un futuro despliegue se contempla utilizar Render, Gunicorn y WhiteNoise.
-
-## Arquitectura
-
-MesaFácil se desarrolla como un monolito modular utilizando el patrón MVT de Django:
-
-- **Model:** representa los datos y las reglas relacionadas con su persistencia.
-- **View:** procesa las solicitudes y coordina la lógica de la aplicación.
-- **Template:** presenta la información al usuario.
-
-Esta arquitectura permite mantener el proyecto sencillo, organizado y adecuado para su alcance académico, evitando agregar complejidad innecesaria durante las primeras etapas.
-
-## Estructura inicial
+La imagen usa `python:3.13.17-slim-bookworm`, dependencias fijadas en
+`requirements.txt` y el usuario sin privilegios `app` (UID 10001).
 
 ```text
-MesaFacil/
-├── config/             # Configuración general de Django
-├── reservas/           # Aplicación principal del sistema
-│   └── migrations/     # Migraciones de la aplicación
-├── .env.example        # Ejemplo de variables de entorno
-├── .gitignore          # Archivos excluidos del repositorio
-├── docker-compose.yml  # Servicio local de PostgreSQL
-├── manage.py           # Herramienta administrativa de Django
-├── requirements.txt    # Dependencias de Python
-└── README.md
+config/                    Configuración y entrada WSGI
+reservas/                  Modelos, servicios y Admin
+reservas/tests/            Pruebas de modelos, servicios y concurrencia
+reservas/migrations/       Migraciones del dominio
+docker/entrypoint.py       Preparación de arranque y servidor
+Dockerfile                 Imagen reutilizable de la aplicación
+.dockerignore              Exclusiones de construcción
+docker-compose.yml         Servicios locales db y web
+.env.example               Variables de ejemplo
+docs/                      Requisitos y diagrama conceptual
 ```
 
-## Requisitos
+## Variables de entorno
 
-Antes de ejecutar el proyecto se necesita:
+Necesitas Docker Desktop iniciado con contenedores Linux y Docker Compose.
+El flujo nativo requiere además Python 3.13 y un entorno virtual.
 
-- Python 3.13.
-- Git.
-- Docker Desktop con Docker Compose.
-- Un entorno de terminal como CMD, PowerShell o Git Bash.
-
-## Instalación local
-
-### 1. Clonar el repositorio
-
-Mediante SSH:
-
-```bash
-git clone git@github.com:Angle931/mesaFacil.git
-cd mesaFacil
-```
-
-### 2. Crear el entorno virtual
-
-En Windows:
-
-```cmd
-py -V:3.13 -m venv .venv
-.venv\Scripts\activate.bat
-```
-
-### 3. Instalar las dependencias
-
-```cmd
-python -m pip install -r requirements.txt
-```
-
-### 4. Configurar las variables de entorno
-
-Copia el archivo de ejemplo:
+En una copia nueva del repositorio:
 
 ```cmd
 copy .env.example .env
 ```
 
-El archivo `.env` debe contener una configuración similar a:
+Si `.env` ya existe, agrega las variables faltantes sin sobrescribir sus valores.
+Reemplaza los placeholders localmente; no publiques `.env` ni claves reales.
+
+| Variable | Uso |
+|---|---|
+| `SECRET_KEY` | Clave aleatoria obligatoria, sin respaldo |
+| `DEBUG` | Booleano explícito; predeterminado `False` |
+| `ALLOWED_HOSTS` | Hosts separados por comas, sin esquema ni puerto |
+| `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | Inicialización de PostgreSQL local |
+| `POSTGRES_PORT` | Puerto publicado en Windows, normalmente `5432` |
+| `DATABASE_URL` | Conexión nativa a `localhost:POSTGRES_PORT` |
+| `DATABASE_URL_DOCKER` | Compose: mismas credenciales y base, host `db`, puerto `5432` |
+| `WEB_CONCURRENCY` | Procesos Gunicorn; predeterminado `2` |
+
+Ejemplo sin credenciales reales:
 
 ```env
 SECRET_KEY=replace_with_generated_local_secret_key
-
+DEBUG=False
+ALLOWED_HOSTS=localhost,127.0.0.1
+WEB_CONCURRENCY=2
 POSTGRES_DB=mesafacil
 POSTGRES_USER=mesafacil_user
 POSTGRES_PASSWORD=change_me
 POSTGRES_PORT=5432
-
 DATABASE_URL=postgresql://mesafacil_user:change_me@localhost:5432/mesafacil
+DATABASE_URL_DOCKER=postgresql://mesafacil_user:change_me@db:5432/mesafacil
 ```
 
-Genera una clave local nueva con el entorno virtual activado:
+Dentro de `web`, `localhost` es el propio contenedor. Compose inyecta
+`DATABASE_URL_DOCKER` como `DATABASE_URL`; Django nativo conserva su URL local.
+Codifica los caracteres reservados de usuario y contraseña al incluirlos en
+las URLs. Ambas deben coincidir con las credenciales de la base existente.
+La conexión usa una espera máxima de cinco segundos por intento, salvo que la
+URL indique otro `connect_timeout`. Si `localhost` tarda por la resolución IPv6
+en Windows, usa `127.0.0.1` en la URL nativa.
+
+Genera una clave con el entorno virtual y Django instalados:
 
 ```cmd
 python -B -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
 ```
 
-Copia el resultado en tu archivo `.env`, reemplazando el placeholder de `SECRET_KEY`. Encierra el valor entre comillas simples para conservar caracteres especiales. Si ya tienes un `.env`, agrega únicamente esta variable sin sobrescribir las demás.
+O utiliza la imagen, sin arrancar Django ni la base:
 
-Django carga este archivo mediante `python-dotenv` y requiere una variable `SECRET_KEY` no vacía; si falta, el inicio falla con un mensaje explícito.
+```cmd
+docker compose build web
+docker compose run --rm --no-deps web python -B -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
+```
 
-El valor utilizado en `POSTGRES_PASSWORD` debe coincidir con la contraseña incluida en `DATABASE_URL`.
+Copia el resultado únicamente en `.env`, entre comillas simples para conservar
+caracteres especiales. `python-dotenv` mantiene el flujo local; las variables
+ya presentes en el proceso tienen prioridad.
 
-El archivo `.env` contiene información local sensible y no debe subirse al repositorio.
+## Flujo completamente contenerizado
 
-### 5. Iniciar PostgreSQL
+Después de configurar `.env` con `DEBUG=False`:
+
+```cmd
+docker compose config --quiet
+docker compose up --build
+```
+
+Para segundo plano:
+
+```cmd
+docker compose up --build -d
+docker compose ps
+```
+
+Compose espera a que PostgreSQL esté saludable. `web` aplica las migraciones
+existentes, ejecuta `collectstatic` y arranca Gunicorn. Si la preparación falla,
+el servidor no arranca. No se generan migraciones ni superusuarios automáticamente.
+
+Panel: **http://127.0.0.1:8000/admin/**. La pantalla pública en `/` todavía no
+está implementada; esa ruta no sirve como comprobación de funcionamiento.
+
+Con `web` iniciado:
+
+```cmd
+docker compose exec web python manage.py migrate --noinput
+docker compose exec web python manage.py showmigrations reservas
+docker compose exec web python manage.py createsuperuser
+docker compose exec web python manage.py collectstatic --noinput
+docker compose exec web python manage.py check
+docker compose exec web python manage.py makemigrations --check
+docker compose exec web python manage.py test reservas
+docker compose exec web id
+```
+
+Las pruebas crean y eliminan una base de pruebas independiente. El usuario
+PostgreSQL local debe poder crearla; la concurrencia se prueba sobre PostgreSQL,
+sin sustituirlo por SQLite.
+
+Para un comando sin tener `web` iniciado:
+
+```cmd
+docker compose run --rm web python manage.py check
+```
+
+Los comandos explícitos de gestión omiten la preparación del servidor: no
+ejecutan migraciones ni `collectstatic` automáticamente.
+
+Registros y detención:
+
+```cmd
+docker compose logs -f web
+docker compose logs -f db
+docker compose stop
+docker compose down
+```
+
+`stop` detiene; `down` elimina contenedores y red, conservando el volumen nombrado
+`postgres_data`. No uses `down -v` para detener normalmente: eliminaría sus datos.
+Mantén el mismo nombre de proyecto Compose para reutilizar el volumen existente.
+Cambiar las variables de inicialización no cambia las credenciales de una base
+ya inicializada.
+
+Los puertos se publican únicamente en `127.0.0.1`. No se monta código ni hay
+recarga automática: después de cambiar código vuelve a ejecutar
+`docker compose up --build -d`.
+
+## Flujo nativo: Django local y PostgreSQL en Docker
+
+Compose sigue permitiendo levantar únicamente la base:
 
 ```cmd
 docker compose up -d db
 ```
 
-Verifica que el contenedor se encuentre saludable:
+Detén `web` si necesitas reutilizar su puerto 8000:
 
 ```cmd
-docker compose ps
+docker compose stop web
 ```
 
-### 6. Aplicar las migraciones
+En CMD, crea y activa el entorno virtual si aún no existe:
 
 ```cmd
+py -V:3.13 -m venv .venv
+.venv\Scripts\activate.bat
+python -m pip install -r requirements.txt
 python manage.py migrate
-```
-
-### 7. Crear un usuario administrador
-
-```cmd
 python manage.py createsuperuser
+python manage.py collectstatic --noinput
+python manage.py runserver --nostatic
 ```
 
-### 8. Iniciar la aplicación
-
-```cmd
-python manage.py runserver
-```
-
-La aplicación estará disponible en:
-
-```text
-http://127.0.0.1:8000/
-```
-
-El panel administrativo estará disponible en:
-
-```text
-http://127.0.0.1:8000/admin/
-```
-
-## Comandos útiles
-
-Comprobar la configuración de Django:
+`runserver --nostatic` deja que WhiteNoise entregue los estáticos recogidos,
+también con `DEBUG=False`. Gunicorn se ejecuta en Linux dentro del contenedor;
+Windows conserva el servidor de desarrollo nativo. Solo crea el superusuario
+si hace falta: ambos flujos comparten los datos de PostgreSQL.
 
 ```cmd
 python manage.py check
+python manage.py makemigrations --check
+python manage.py test reservas
 ```
 
-Consultar el estado de PostgreSQL:
+## Preparación futura para Render
 
-```cmd
-docker compose ps
-```
+La imagen excluye `.env`, `.venv`, Git y datos de PostgreSQL. La construcción no
+necesita credenciales de la aplicación. Los estáticos se recogen al arrancar
+con las variables de ejecución; son regenerables y no requieren volumen.
 
-Detener los servicios de Docker:
+Para el despliegue posterior:
 
-```cmd
-docker compose down
-```
+- Usar este Dockerfile o la imagen resultante y PostgreSQL administrado.
+- Definir `DATABASE_URL` administrada, una `SECRET_KEY` propia, `DEBUG=False`
+  y `ALLOWED_HOSTS` con el dominio del servicio.
+- Gunicorn escucha en `0.0.0.0` y respeta `PORT` (8000 por defecto).
+- La imagen tiene `RUN_MIGRATIONS=false` por defecto. Compose local lo activa
+  explícitamente. En Render las migraciones deben coordinarse antes del
+  despliegue según las capacidades del plan contratado.
+- Verificar HTTPS, proxy, cookies seguras y `check --deploy` antes de publicar.
 
-Reiniciar PostgreSQL:
-
-```cmd
-docker compose restart db
-```
-
-## Justificación tecnológica
-
-Django fue seleccionado porque integra en un mismo framework el manejo de rutas, formularios, autenticación, administración y acceso a datos, lo que permite reducir el tiempo de desarrollo.
-
-PostgreSQL se utiliza desde el inicio para mantener consistencia entre el entorno local y el futuro entorno de despliegue. Docker Compose facilita su instalación y permite que otros integrantes del equipo reproduzcan el entorno de desarrollo.
-
-Esta combinación proporciona una base sencilla y suficientemente robusta para desarrollar MesaFácil sin introducir tecnologías adicionales que aumenten innecesariamente el alcance del proyecto.
-
-## Próximas etapas
-
-- Diseñar los modelos del dominio.
-- Implementar la gestión de mesas y horarios.
-- Implementar la creación y administración de reservas.
-- Incorporar validaciones de disponibilidad.
-- Crear las vistas y plantillas para los usuarios.
-- Agregar pruebas automatizadas.
-- Preparar el despliegue en Render.
+Este incremento no configura ni ejecuta un despliegue, ni agrega `render.yaml`,
+Nginx, Redis o servicios adicionales.
 
 ## Documentación
 
-- [Requisitos funcionales y reglas de negocio](docs/requirements.md)
-- `AGENTS.md`: instrucciones de desarrollo para asistentes de programación.
+- [Requisitos funcionales y reglas de negocio](docs/requirements.md).
+- [Diagrama de clases](docs/diagrams/class-diagram.md).
+- [Instrucciones de trabajo](AGENTS.md).
