@@ -1,0 +1,289 @@
+name: MesaFacil CI-CD
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mesafacil-${{ github.event_name == 'push' && 'main' || format('pr-{0}', github.event.pull_request.number) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CI_IMAGE: mesafacil-ci:${{ github.sha }}
+  GHCR_IMAGE: ghcr.io/angle931/mesafacil
+
+jobs:
+  ci:
+    name: Build and test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    outputs:
+      image_id: ${{ steps.build.outputs.image_id }}
+
+    steps:
+      # Referencias inmutables de las versiones seleccionadas.
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Prepare isolated CI environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          secret_key="$(openssl rand -hex 32)"
+          db_password="$(openssl rand -hex 24)"
+          database_url="postgresql://ci:${db_password}@ci-db:5432/mesafacil_ci"
+          echo "::add-mask::${secret_key}"
+          echo "::add-mask::${db_password}"
+          echo "::add-mask::${database_url}"
+          {
+            echo "SECRET_KEY=${secret_key}"
+            echo "POSTGRES_USER=ci"
+            echo "POSTGRES_PASSWORD=${db_password}"
+            echo "POSTGRES_DB=mesafacil_ci"
+            echo "DATABASE_URL=${database_url}"
+            echo "DEBUG=False"
+            echo "ALLOWED_HOSTS=localhost,127.0.0.1"
+            echo "RUN_MIGRATIONS=false"
+            echo "PORT=8000"
+          } >> "$GITHUB_ENV"
+
+      - name: Build image once
+        id: build
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker build \
+            --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
+            --label "io.mesafacil.ci.run-number=${GITHUB_RUN_NUMBER}" \
+            --tag "$CI_IMAGE" .
+          image_id="$(docker image inspect --format '{{.Id}}' "$CI_IMAGE")"
+          echo "image_id=${image_id}" >> "$GITHUB_OUTPUT"
+
+      - name: Start temporary PostgreSQL 17
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker network create mesafacil-ci
+          docker run -d --name ci-db --network mesafacil-ci \
+            --env POSTGRES_USER --env POSTGRES_PASSWORD --env POSTGRES_DB \
+            --health-cmd "pg_isready -U ci -d mesafacil_ci" \
+            --health-interval 2s --health-timeout 5s --health-retries 20 \
+            postgres:17-alpine
+          for attempt in $(seq 1 60); do
+            status="$(docker inspect --format '{{.State.Health.Status}}' ci-db)"
+            if [ "$status" = healthy ]; then
+              exit 0
+            fi
+            if [ "$status" = unhealthy ]; then
+              echo "::error::PostgreSQL is unhealthy"
+              exit 1
+            fi
+            sleep 2
+          done
+          echo "::error::PostgreSQL readiness timeout"
+          exit 1
+
+      - name: Validate migrations, static files and tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --name ci-check --network mesafacil-ci \
+            --env SECRET_KEY --env DATABASE_URL --env DEBUG --env ALLOWED_HOSTS \
+            "$CI_IMAGE" python -c '
+          import subprocess
+          import sys
+          commands = [
+              ["check"],
+              ["makemigrations", "--check", "--dry-run"],
+              ["migrate", "--noinput"],
+              ["migrate", "--check"],
+              ["collectstatic", "--noinput"],
+              ["test", "reservas"],
+          ]
+          for command in commands:
+              print("manage.py", *command, flush=True)
+              subprocess.run([sys.executable, "manage.py", *command], check=True)
+          '
+
+      - name: Start image for HTTP smoke test
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run -d --name ci-web --network mesafacil-ci \
+            --env SECRET_KEY --env DATABASE_URL --env DEBUG --env ALLOWED_HOSTS \
+            --env RUN_MIGRATIONS --env PORT "$CI_IMAGE"
+
+      - name: Verify public page, Admin and WhiteNoise
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker exec -i ci-web python - <<'PY'
+          import os
+          import time
+          from urllib.error import URLError
+          from urllib.request import Request, urlopen
+
+          base = "http://127.0.0.1:8000"
+          deadline = time.monotonic() + 60
+          while True:
+              try:
+                  with urlopen(base + "/admin/login/", timeout=2) as response:
+                      assert response.status == 200
+                  break
+              except (URLError, TimeoutError):
+                  if time.monotonic() >= deadline:
+                      raise RuntimeError("HTTP readiness timeout")
+                  time.sleep(1)
+
+          for path in ("/", "/admin/login/"):
+              with urlopen(base + path, timeout=10) as response:
+                  assert response.status == 200
+                  assert "text/html" in response.headers["Content-Type"]
+                  assert response.read()
+              print("HTTP OK:", path)
+
+          os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
+          import django
+          django.setup()
+          from django.conf import settings
+          from django.contrib.staticfiles.storage import staticfiles_storage
+
+          assert settings.DEBUG is False
+          assert os.getuid() != 0
+          path = staticfiles_storage.url("admin/css/base.css")
+          request = Request(base + path, headers={"Accept-Encoding": "gzip"})
+          with urlopen(request, timeout=10) as response:
+              assert response.status == 200
+              assert "text/css" in response.headers["Content-Type"]
+              assert response.headers.get("Content-Encoding") == "gzip"
+              assert "immutable" in response.headers["Cache-Control"]
+              assert response.read()
+          print("WhiteNoise and non-root user: OK")
+          PY
+
+      - name: Save tested image
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker save "$CI_IMAGE" | gzip > "$RUNNER_TEMP/mesafacil-image.tar.gz"
+
+      - name: Upload tested image artifact
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: tested-image-${{ github.sha }}
+          path: ${{ runner.temp }}/mesafacil-image.tar.gz
+          retention-days: 1
+          compression-level: 0
+
+      - name: Container logs on failure
+        if: failure()
+        shell: bash
+        run: |
+          for container in ci-check ci-web ci-db; do
+            echo "::group::${container}"
+            docker logs --tail 200 "$container" 2>&1 || true
+            echo "::endgroup::"
+          done
+
+      - name: Cleanup temporary containers
+        if: always()
+        shell: bash
+        run: |
+          docker rm -fv ci-web ci-check ci-db >/dev/null 2>&1 || true
+          docker network rm mesafacil-ci >/dev/null 2>&1 || true
+
+  publish:
+    name: Publish and request Render deployment
+    needs: ci
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Download tested image
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: tested-image-${{ github.sha }}
+          path: ${{ runner.temp }}
+
+      - name: Load and verify tested image identity
+        env:
+          EXPECTED_IMAGE_ID: ${{ needs.ci.outputs.image_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker load --input "$RUNNER_TEMP/mesafacil-image.tar.gz"
+          actual_id="$(docker image inspect --format '{{.Id}}' "$CI_IMAGE")"
+          test "$actual_id" = "$EXPECTED_IMAGE_ID"
+
+      - name: Login to GHCR
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish SHA tag and promote latest safely
+        id: publication
+        env:
+          EXPECTED_IMAGE_ID: ${{ needs.ci.outputs.image_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha_tag="${GHCR_IMAGE}:sha-${GITHUB_SHA}"
+          latest_tag="${GHCR_IMAGE}:latest"
+          docker tag "$EXPECTED_IMAGE_ID" "$sha_tag"
+          docker push "$sha_tag"
+
+          # El repositorio ya existe incluso en la primera publicacion.
+          if docker pull "$latest_tag" > "$RUNNER_TEMP/latest-pull.log" 2>&1; then
+            previous_run="$(docker image inspect --format \
+              '{{ index .Config.Labels "io.mesafacil.ci.run-number" }}' \
+              "$latest_tag")"
+            if ! [[ "$previous_run" =~ ^[0-9]+$ ]]; then
+              echo "::error::latest has no recognized CI ordering label"
+              exit 1
+            fi
+          elif grep -Eqi 'manifest unknown|manifest.*not found' "$RUNNER_TEMP/latest-pull.log"; then
+            previous_run=0
+          else
+            echo "::error::Cannot inspect latest safely"
+            exit 1
+          fi
+
+          if (( previous_run > GITHUB_RUN_NUMBER )); then
+            echo "Older execution: SHA retained; latest unchanged."
+            echo "promoted=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          docker tag "$EXPECTED_IMAGE_ID" "$latest_tag"
+          docker push "$latest_tag"
+          echo "promoted=true" >> "$GITHUB_OUTPUT"
+
+      - name: Request Render deployment
+        if: steps.publication.outputs.promoted == 'true'
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "$RENDER_DEPLOY_HOOK_URL" ]; then
+            echo "::error::RENDER_DEPLOY_HOOK_URL is not configured"
+            exit 1
+          fi
+          curl --fail --silent --show-error --max-time 30 \
+            --request POST --output /dev/null "$RENDER_DEPLOY_HOOK_URL"
