@@ -1,0 +1,16 @@
+{% extends "admin/base.html" %}
+{% load static %}
+
+{% block title %}{{ title }} | MesaFácil{% endblock %}
+{% block branding %}
+  <h1 id="site-name"><a href="{% url 'admin:index' %}" class="mesafacil-brand">
+    <span class="mesafacil-mark" aria-hidden="true">m</span>
+    <span>mesa<span class="mesafacil-brand-light">fácil</span></span>
+    <span class="mesafacil-admin-label">ADMINISTRACIÓN</span>
+  </a></h1>
+{% endblock %}
+{% block nav-global %}<a class="mesafacil-public-link" href="{% url 'inicio' %}">Ver sitio público <span aria-hidden="true">↗</span></a>{% endblock %}
+{% block extrastyle %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'reservas/admin.css' %}">
+{% endblock %}

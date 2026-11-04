@@ -112,7 +112,7 @@ def _insertar_reserva(*, cliente, mesa, fecha, hora, cantidad_personas):
     raise GeneracionCodigoAgotada()
 
 
-def registrar_reserva(*, nombre, telefono, fecha, hora, cantidad_personas, correo=""):
+def registrar_reserva(*, nombre, telefono, fecha, hora, cantidad_personas, correo="", mesa_id=None):
     """Crea cliente y reserva juntos; nunca busca clientes por teléfono.
 
     Si el llamador abre otra transacción, el commit definitivo depende de ella.
@@ -121,12 +121,16 @@ def registrar_reserva(*, nombre, telefono, fecha, hora, cantidad_personas, corre
     cliente = Cliente(nombre=nombre, telefono=telefono, correo=correo)
     cliente.full_clean()
     with transaction.atomic():
-        candidatas = _bloquear_candidatas(cantidad_personas)
+        if mesa_id is None:
+            candidatas = _bloquear_candidatas(cantidad_personas)
+        else:
+            candidatas = _bloquear_candidatas(cantidad_personas, mesa_original_id=mesa_id)
         # Una espera por bloqueo puede haber dejado atrás el inicio del turno.
         _validar_solicitud(fecha, hora, cantidad_personas)
-        mesa = _disponibles(fecha, hora, cantidad_personas).filter(
+        disponibles = _disponibles(fecha, hora, cantidad_personas).filter(
             pk__in=[candidata.pk for candidata in candidatas],
-        ).first()
+        )
+        mesa = disponibles.filter(pk=mesa_id).first() if mesa_id is not None else disponibles.first()
         if mesa is None:
             raise SinDisponibilidad()
         cliente.save(force_insert=True)

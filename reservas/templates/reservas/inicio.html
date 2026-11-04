@@ -1,0 +1,163 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7f5ef">
+  <title>MesaFácil | Reserva tu mesa</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="{% static 'reservas/site.css' %}" rel="stylesheet">
+</head>
+<body>
+  <nav class="navbar navbar-expand-lg site-nav">
+    <div class="container site-container">
+      <a class="navbar-brand brand" href="{% url 'inicio' %}" aria-label="MesaFácil, inicio">
+        <span class="brand-mark" aria-hidden="true">m</span><span>mesa<span class="brand-light">fácil</span></span>
+      </a>
+      <a class="nav-admin" href="/admin/">Acceso del restaurante <span aria-hidden="true">↗</span></a>
+    </div>
+  </nav>
+
+  <main>
+    <section class="hero-section">
+      <div class="container site-container">
+        <div class="row align-items-center g-5">
+          <div class="col-lg-6 hero-copy">
+            <span class="eyebrow"><span class="eyebrow-dot"></span> Managua · cocina para compartir</span>
+            <h1>Los buenos<br>momentos <span>empiezan</span><br>en la mesa.</h1>
+            <p class="hero-lede">Encuentra un espacio para tu próxima comida. Elige el día, la hora y cuántos vienen.</p>
+            <div class="hero-footnote"><span class="footnote-icon">✳</span> Sin crear cuenta · Confirmación al instante</div>
+          </div>
+
+          <div class="col-lg-6">
+            <section class="booking-card" aria-labelledby="booking-title">
+              <div class="card-topline"><span>01 <i></i> 02 <i></i> 03</span><span>CONSULTA</span></div>
+              <h2 id="booking-title">Busca tu mesa</h2>
+              <p class="card-intro">Cuéntanos cuándo vienes y revisamos disponibilidad.</p>
+
+              <form method="post" novalidate>
+                {% csrf_token %}
+                {% if form.non_field_errors %}
+                  <div class="alert alert-warning form-alert" role="alert">{{ form.non_field_errors }}</div>
+                {% endif %}
+                <div class="mb-3">
+                  <label class="form-label" for="{{ form.fecha.id_for_label }}">{{ form.fecha.label }}</label>
+                  {{ form.fecha }}
+                  {% for error in form.fecha.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                </div>
+                <div class="row g-3">
+                  <div class="col-7">
+                    <label class="form-label" for="{{ form.hora.id_for_label }}">{{ form.hora.label }}</label>
+                    {{ form.hora }}
+                    {% for error in form.hora.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                  </div>
+                  <div class="col-5">
+                    <label class="form-label" for="{{ form.cantidad_personas.id_for_label }}">{{ form.cantidad_personas.label }}</label>
+                    {{ form.cantidad_personas }}
+                    {% for error in form.cantidad_personas.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                  </div>
+                </div>
+                <button class="btn btn-search w-100" type="submit">Ver mesas disponibles <span aria-hidden="true">→</span></button>
+                <p class="privacy-note"><span aria-hidden="true">♧</span> Tus datos se solicitan más adelante, solo al reservar.</p>
+              </form>
+            </section>
+            <div class="card-caption"><span>Un lugar para encontrarnos.</span><span>MF—01</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    {% if consultado and not reserva_form and not reserva_creada %}
+    <div class="reservation-overlay availability-overlay" role="presentation">
+    <section class="reservation-dialog availability-dialog" role="dialog" aria-modal="true" aria-label="Resultados de disponibilidad" aria-live="polite">
+      <div class="container site-container">
+        <a class="dialog-close availability-close" href="{% url 'inicio' %}" aria-label="Cerrar resultados">×</a>
+        <div class="availability-heading">
+          <div><span class="eyebrow">TU BÚSQUEDA</span><h2>{% if mesas %}Hay sitio para ustedes.{% else %}No encontramos mesas disponibles.{% endif %}</h2></div>
+          {% if mesas %}<span class="result-count">{{ mesas|length }} {% if mesas|length == 1 %}opción{% else %}opciones{% endif %}</span>{% endif %}
+        </div>
+        {% if mesas %}
+          <div class="row g-3">
+            {% for mesa in mesas %}
+              <div class="col-sm-6 col-lg-4">
+                <article class="table-option">
+                  <span class="table-number">Mesa {{ mesa.numero }}</span>
+                  <span class="table-capacity">Hasta {{ mesa.capacidad }} personas</span>
+                  <form method="post" class="mt-3">
+                    {% csrf_token %}
+                    <input type="hidden" name="accion" value="elegir">
+                    <input type="hidden" name="fecha" value="{{ form.fecha.value }}">
+                    <input type="hidden" name="hora" value="{{ form.hora.value }}">
+                    <input type="hidden" name="cantidad_personas" value="{{ form.cantidad_personas.value }}">
+                    <input type="hidden" name="mesa_id" value="{{ mesa.pk }}">
+                    <button class="btn btn-search w-100" type="submit">Elegir esta mesa</button>
+                  </form>
+                </article>
+              </div>
+            {% endfor %}
+          </div>
+          <p class="availability-hint">La disponibilidad se confirma nuevamente al registrar la reserva.</p>
+        {% else %}
+          <p class="availability-hint">Prueba con otro horario o fecha para encontrar una opción.</p>
+        {% endif %}
+      </div>
+    </section>
+    </div>
+    {% endif %}
+    {% if reserva_form %}
+    <div class="reservation-overlay" role="presentation">
+      <section class="reservation-dialog" role="dialog" aria-modal="true" aria-labelledby="reservation-title" aria-live="polite">
+        <div class="reservation-dialog-heading">
+          <div><span class="eyebrow">UN PASO MÁS</span><h2 id="reservation-title">Completa tu reserva</h2></div>
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="accion" value="consultar">
+            <input type="hidden" name="fecha" value="{{ reserva_form.fecha.value }}">
+            <input type="hidden" name="hora" value="{{ reserva_form.hora.value }}">
+            <input type="hidden" name="cantidad_personas" value="{{ reserva_form.cantidad_personas.value }}">
+            <button class="dialog-close" type="submit" aria-label="Cerrar y volver a las mesas">×</button>
+          </form>
+        </div>
+        <p class="card-intro">Déjanos tus datos para confirmar la mesa seleccionada.</p>
+        {% if mesa_seleccionada %}
+          <div class="selected-table-box">
+            <span class="selected-table-icon" aria-hidden="true">✓</span>
+            <span><strong>Mesa {{ mesa_seleccionada.numero }}</strong><small>Hasta {{ mesa_seleccionada.capacidad }} personas</small></span>
+          </div>
+        {% endif %}
+        {% if reserva_form.non_field_errors %}<div class="alert alert-warning">{{ reserva_form.non_field_errors }}</div>{% endif %}
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="accion" value="reservar">
+          {{ reserva_form.fecha }}{{ reserva_form.hora }}{{ reserva_form.cantidad_personas }}{{ reserva_form.mesa_id }}
+          {% for field in reserva_form.visible_fields %}
+            <div class="mb-3">
+              <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+              {{ field }}
+              {% for error in field.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+            </div>
+          {% endfor %}
+          <button class="btn btn-search w-100" type="submit">Confirmar reserva</button>
+        </form>
+      </section>
+    </div>
+    {% endif %}
+
+    {% if reserva_creada %}
+    <div class="reservation-overlay" role="presentation">
+      <section class="reservation-dialog confirmation-dialog" role="dialog" aria-modal="true" aria-labelledby="confirmation-title" aria-live="polite">
+        <span class="eyebrow">RESERVA LISTA</span>
+        <h2 id="confirmation-title">¡Te esperamos!</h2>
+        <p>Guarda tu código de confirmación:</p>
+        <p class="confirmation-code">{{ reserva_creada.codigo_confirmacion }}</p>
+        <p>{{ reserva_creada.cliente.nombre }} · Mesa {{ reserva_creada.mesa.numero }} · {{ reserva_creada.fecha }} a las {{ reserva_creada.hora }} · {{ reserva_creada.cantidad_personas }} personas</p>
+        <a class="btn btn-search w-100" href="{% url 'inicio' %}">Volver al inicio</a>
+      </section>
+    </div>
+    {% endif %}
+  </main>
+
+  <footer class="site-footer"><div class="container site-container"><span>Una mesa reúne más que platos.</span><span>MANAGUA, NICARAGUA · 2026</span></div></footer>
+</body>
+</html>

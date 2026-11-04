@@ -468,7 +468,7 @@ class ReservaTests(TestCase):
 
 
 class ReservaAdminTests(TestCase):
-    def test_admin_solo_consulta(self):
+    def test_admin_permite_editar_reserva_sin_eliminarla(self):
         modelo_admin = admin.site.get_model_admin(Reserva)
         self.assertIsInstance(modelo_admin, ReservaAdmin)
         usuario = get_user_model().objects.create_superuser(username="admin", password="test-only")
@@ -476,7 +476,7 @@ class ReservaAdminTests(TestCase):
         request.user = usuario
         self.assertTrue(modelo_admin.has_view_permission(request))
         self.assertFalse(modelo_admin.has_add_permission(request))
-        self.assertFalse(modelo_admin.has_change_permission(request))
+        self.assertTrue(modelo_admin.has_change_permission(request))
         self.assertFalse(modelo_admin.has_delete_permission(request))
         self.assertEqual(modelo_admin.get_actions(request), {})
 
@@ -487,8 +487,13 @@ class ReservaAdminTests(TestCase):
         detalle = f"/admin/reservas/reserva/{reserva.pk}/change/"
         self.assertEqual(self.client.get("/admin/reservas/reserva/").status_code, 200)
         self.assertEqual(self.client.get(detalle).status_code, 200)
-        self.assertEqual(self.client.post(detalle, {"estado": "CANCELADA"}).status_code, 403)
+        respuesta = self.client.post(detalle, {
+            "nombre_cliente": "Ana", "telefono_cliente": "+50588881234", "correo_cliente": "",
+            "fecha": reserva.fecha.isoformat(), "hora": str(reserva.hora), "cantidad_personas": "2",
+            "mesa": str(mesa.pk), "estado": "CANCELADA",
+        })
+        self.assertEqual(respuesta.status_code, 302)
         self.assertEqual(self.client.post("/admin/reservas/reserva/add/", {}).status_code, 403)
         self.assertEqual(self.client.post(f"/admin/reservas/reserva/{reserva.pk}/delete/", {}).status_code, 403)
         reserva.refresh_from_db()
-        self.assertEqual(reserva.estado, "PENDIENTE")
+        self.assertEqual(reserva.estado, "CANCELADA")
