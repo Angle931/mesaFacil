@@ -16,6 +16,7 @@ RUN useradd --create-home --uid 10001 --user-group app \
 COPY manage.py ./
 COPY config/ ./config/
 COPY reservas/ ./reservas/
+COPY templates/ ./templates/
 COPY docker/ ./docker/
 
 USER app
