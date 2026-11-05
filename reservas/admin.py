@@ -2,7 +2,9 @@ from django import forms
 from django.contrib import admin
 from django.core.exceptions import ValidationError
 from django.db import transaction
+from django.forms.models import InlineForeignKeyField, construct_instance
 
+from .exceptions import ReservaServiceError
 from .models import Cliente, Mesa, Reserva
 from .services import cambiar_estado_reserva, modificar_reserva
 from .validators import normalizar_telefono
@@ -76,13 +78,69 @@ class ReservaAdmin(admin.ModelAdmin):
         def clean_telefono_cliente(self):
             return normalizar_telefono(self.cleaned_data["telefono_cliente"])
 
+        def clean(self):
+            cleaned = super().clean()
+            if all(campo in cleaned for campo in ("mesa", "fecha", "hora", "estado")):
+                if cleaned["estado"] in (Reserva.Estado.PENDIENTE, Reserva.Estado.CONFIRMADA):
+                    conflicto = Reserva.objects.filter(
+                        mesa=cleaned["mesa"], fecha=cleaned["fecha"], hora=cleaned["hora"],
+                        estado__in=(Reserva.Estado.PENDIENTE, Reserva.Estado.CONFIRMADA),
+                    ).exclude(pk=self.instance.pk).exists()
+                    if conflicto:
+                        self.add_error(None, "La mesa seleccionada ya no está disponible para ese turno.")
+            error = getattr(self, "admin_business_error", None)
+            if error:
+                if isinstance(error, ValidationError) and hasattr(error, "error_dict"):
+                    for field, errors in error.error_dict.items():
+                        self.add_error(field if field in self.fields else None, errors)
+                else:
+                    self.add_error(None, error)
+            return cleaned
+
         def _post_clean(self):
-            # Las reglas y la disponibilidad se validan dentro de los servicios
-            # transaccionales en save_model.
-            from django.forms.models import construct_instance
-            self.instance = construct_instance(self, self.instance, self._meta.fields, self._meta.exclude)
+            # Valida campos y reglas del modelo; el conflicto activo se presenta
+            # arriba con un mensaje comprensible para el formulario.
+            exclude = self._get_validation_exclusions()
+            for name, field in self.fields.items():
+                if isinstance(field, InlineForeignKeyField):
+                    exclude.add(name)
+            try:
+                self.instance = construct_instance(
+                    self, self.instance, self._meta.fields, self._meta.exclude,
+                )
+            except ValidationError as error:
+                self._update_errors(error)
+            try:
+                self.instance.full_clean(
+                    exclude=exclude, validate_unique=False, validate_constraints=False,
+                )
+            except ValidationError as error:
+                self._update_errors(error)
+            if self._validate_unique:
+                self.validate_unique()
 
     form = ReservaAdminForm
+
+    def get_form(self, request, obj=None, **kwargs):
+        form_class = super().get_form(request, obj, **kwargs)
+        business_error = getattr(request, "_reserva_admin_business_error", None)
+        if business_error is not None:
+            class FormWithBusinessError(form_class):
+                admin_business_error = business_error
+            return FormWithBusinessError
+        return form_class
+
+    def changeform_view(self, request, object_id=None, form_url="", extra_context=None):
+        try:
+            return super().changeform_view(request, object_id, form_url, extra_context)
+        except (ValidationError, ReservaServiceError) as error:
+            # super() ya salió del bloque atómico y revirtió los cambios. Procesa
+            # de nuevo el POST como formulario inválido para conservar sus valores
+            # y mostrar el error sin volver a intentar guardar.
+            if request.method != "POST":
+                raise
+            request._reserva_admin_business_error = error
+            return super().changeform_view(request, object_id, form_url, extra_context)
 
     def has_add_permission(self, request):
         return False
@@ -110,9 +168,6 @@ class ReservaAdmin(admin.ModelAdmin):
             if datos["estado"] != actualizado.estado:
                 actualizado = cambiar_estado_reserva(actualizado.pk, datos["estado"])
         obj.__dict__.update(actualizado.__dict__)
-
-    def has_change_permission(self, request, obj=None):
-        return True
 
     def has_delete_permission(self, request, obj=None):
         return False
