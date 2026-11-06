@@ -68,7 +68,11 @@ class RegistroConcurrenteTests(TransactionTestCase):
                 primero = Thread(target=registrar, name="registro-primero", daemon=True)
                 hilos.append(primero)
                 primero.start()
-                self.assertTrue(primera_bloqueada.wait(5), "El primer registro no obtuvo las candidatas.")
+                if not primera_bloqueada.wait(5):
+                    liberar_primera.set()
+                    primero.join(timeout=1)
+                    detalle = resultados.get_nowait() if not resultados.empty() else "sin resultado del hilo"
+                    self.fail(f"El primer registro no obtuvo las candidatas; hilo={detalle!r}")
                 segundo = Thread(target=registrar, name="registro-segundo", daemon=True)
                 hilos.append(segundo)
                 segundo.start()
@@ -218,7 +222,11 @@ class ModificacionConcurrenteTests(TransactionTestCase):
                 primero = Thread(target=ejecutar, args=(primera,), name="operacion-primera", daemon=True)
                 hilos.append(primero)
                 primero.start()
-                self.assertTrue(obtenido.wait(5), "La primera operación no llegó al punto de bloqueo.")
+                if not obtenido.wait(5):
+                    liberar.set()
+                    primero.join(timeout=1)
+                    detalle = resultados.get_nowait() if not resultados.empty() else "sin resultado del hilo"
+                    self.fail(f"La primera operación no llegó al punto de bloqueo; hilo={detalle!r}")
                 segundo = Thread(target=ejecutar, args=(segunda,), name="operacion-segunda", daemon=True)
                 hilos.append(segundo)
                 segundo.start()

@@ -1,6 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap');
 
-:root {
+:root,
+html[data-theme="light"] {
   --primary: #254a39;
   --secondary: #19372b;
   --accent: #d4ef83;
@@ -14,16 +15,84 @@
   --body-bg: #f7f5ef;
   --darkened-bg: #efeee7;
   --selected-row: #f1f5e9;
+  --primary-fg: #fffefa;
+  --header-link-color: #fffefa;
+  --selected-bg: #e4eadb;
+  --focus-color: #315c43;
+  --input-bg: #fffefa;
+  --input-fg: #26322b;
+  --card-bg: #fffefa;
+  --card-border: #e8e7de;
+  --muted-fg: #737a72;
+  --sidebar-bg: #f1f0e9;
+  --sidebar-current: #e4eadb;
+  --stripe-bg: #fffefa;
+  --accent-fg: #19372b;
+  --kicker-fg: #748b70;
+  --current-user-fg: #788078;
+  --icon-bg: #edf1e5;
+  --empty-state-bg: #fffefa;
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --primary: #b7d9bc;
+  --secondary: #d0e6d3;
+  --accent: #d4ef83;
+  --header-bg: #17251d;
+  --header-color: #f4f7f1;
+  --link-fg: #a7d2b0;
+  --link-hover-color: #d4ef83;
+  --hairline-color: #3b4940;
+  --border-color: #3b4940;
+  --body-fg: #e4e9e2;
+  --body-bg: #202923;
+  --darkened-bg: #29342d;
+  --selected-row: #344138;
+  --primary-fg: #17251d;
+  --header-link-color: #f4f7f1;
+  --selected-bg: #35463a;
+  --focus-color: #a7d2b0;
+  --input-bg: #202923;
+  --input-fg: #e4e9e2;
+  --card-bg: #29342d;
+  --card-border: #3b4940;
+  --muted-fg: #b1bcb2;
+  --sidebar-bg: #242f28;
+  --sidebar-current: #35463a;
+  --stripe-bg: #242f28;
+  --accent-fg: #19372b;
+  --kicker-fg: #a8bd9d;
+  --current-user-fg: #b1bcb2;
+  --icon-bg: #35463a;
+  --empty-state-bg: #29342d;
+}
+
+@media (prefers-color-scheme: dark) {
+  html[data-theme="auto"] {
+    color-scheme: dark;
+    --primary: #b7d9bc; --secondary: #d0e6d3; --accent: #d4ef83;
+    --header-bg: #17251d; --header-color: #f4f7f1; --link-fg: #a7d2b0;
+    --link-hover-color: #d4ef83; --hairline-color: #3b4940; --border-color: #3b4940;
+    --body-fg: #e4e9e2; --body-bg: #202923; --darkened-bg: #29342d;
+    --selected-row: #344138; --primary-fg: #17251d; --header-link-color: #f4f7f1;
+    --selected-bg: #35463a; --focus-color: #a7d2b0; --input-bg: #202923;
+    --input-fg: #e4e9e2; --card-bg: #29342d; --card-border: #3b4940;
+    --muted-fg: #b1bcb2; --sidebar-bg: #242f28; --sidebar-current: #35463a;
+    --stripe-bg: #242f28;
+    --accent-fg: #19372b; --kicker-fg: #a8bd9d; --current-user-fg: #b1bcb2;
+    --icon-bg: #35463a; --empty-state-bg: #29342d;
+  }
 }
 
 body, input, textarea, select, .button, input[type=submit], input[type=button], .submit-row input, a.button {
   font-family: 'DM Sans', sans-serif;
 }
-body { background: #f7f5ef; }
-#header { min-height: 68px; padding: 0 28px; background: #19372b; color: #fffefa; }
+body { background: var(--body-bg); color: var(--body-fg); }
+#header { min-height: 68px; padding: 0 28px; background: var(--header-bg); color: var(--header-color); }
 #branding { display: flex; align-items: center; min-height: 68px; }
 #site-name { margin: 0; font: 800 19px 'Manrope', sans-serif; letter-spacing: -.8px; }
-#site-name a:link, #site-name a:visited { color: #fffefa; }
+#site-name a:link, #site-name a:visited { color: var(--header-link-color); }
 .mesafacil-brand { display: inline-flex; align-items: center; gap: 9px; text-decoration: none; }
 .mesafacil-mark { display: grid; width: 29px; height: 29px; place-items: center; border-radius: 50%; background: #d4ef83; color: #19372b; font-size: 18px; letter-spacing: -2px; }
 .mesafacil-brand-light { font-weight: 500; }
@@ -34,53 +103,57 @@ body { background: #f7f5ef; }
 .mesafacil-public-link { display: inline-block; margin: 0 28px 12px; color: #e3eddf !important; font-size: 11px; text-decoration: none; }
 .mesafacil-public-link span { margin-left: 5px; color: #d4ef83; }
 .mesafacil-public-link:hover { color: #d4ef83 !important; }
-#nav-sidebar { border-right: 1px solid #e5e4db; background: #f1f0e9; }
-#nav-sidebar .current-model { background: #e4eadb; }
-#nav-sidebar a:link, #nav-sidebar a:visited { color: #315c43; }
-#nav-sidebar a:hover { color: #19372b; }
+#nav-sidebar { border-right: 1px solid var(--hairline-color); background: var(--sidebar-bg); }
+#nav-sidebar .current-model { background: var(--sidebar-current); }
+#nav-sidebar a:link, #nav-sidebar a:visited { color: var(--link-fg); }
+#nav-sidebar a:hover { color: var(--link-hover-color); }
 #content { padding-top: 26px; }
 #content h1, #content h2, #content h3, #content h4 { font-family: 'Manrope', sans-serif; }
-#content h1 { color: #26352c; font-weight: 700; letter-spacing: -1px; }
-.breadcrumbs { background: #eeede5; color: #69746a; }
-.breadcrumbs a { color: #315c43; }
-div.breadcrumbs { padding: 11px 25px; font-size: 11px; }
+#content h1 { color: var(--body-fg); font-weight: 700; letter-spacing: -1px; }
+div.breadcrumbs { padding: 11px 25px; font-size: 11px; background: var(--darkened-bg); color: var(--body-fg); }
+.breadcrumbs a { color: var(--link-fg); }
 .object-tools a:link, .object-tools a:visited, .submit-row input, a.button, input[type=submit], button { border-radius: 3px; }
-.button, input[type=submit], input[type=button], .submit-row input, a.button { background: #254a39; }
+.button, input[type=submit], input[type=button], .submit-row input, a.button { background: #254a39; color: #fffefa; }
 .button:hover, input[type=submit]:hover, input[type=button]:hover, .submit-row input:hover, a.button:hover { background: #19372b; }
-table thead th { background: #efeee7; }
-tr:nth-child(odd), .row-form-errors { background: #fffefa; }
+table thead th, .results thead th, .results tbody tr { background: var(--darkened-bg); color: var(--body-fg); }
+.results tbody tr:nth-child(odd) { background: var(--stripe-bg); }
+.results tbody tr.selected, .results tbody tr:hover { background: var(--selected-bg); }
+.results td, .results th, #changelist-filter, #changelist-filter h2 { color: var(--body-fg); }
+input, textarea, select, .vTextField { background-color: var(--input-bg); color: var(--input-fg); border-color: var(--hairline-color); }
+input:focus, textarea:focus, select:focus { outline-color: var(--focus-color); }
+.messagelist li, .errornote, ul.errorlist { color: var(--body-fg); }
 .messagelist li { border-radius: 3px; }
 
 .mesafacil-dashboard #content { width: auto; max-width: 1240px; margin: 0 auto; padding: 28px 32px 56px; }
 .mesafacil-dashboard-wrap { max-width: 1120px; margin: 0 auto; }
-.mesafacil-welcome { position: relative; display: flex; min-height: 180px; align-items: center; justify-content: space-between; overflow: hidden; padding: 32px 40px; border-radius: 5px; background: #254a39; color: #fffefa; }
+.mesafacil-welcome { position: relative; display: flex; min-height: 180px; align-items: center; justify-content: space-between; overflow: hidden; padding: 32px 40px; border-radius: 5px; background: var(--header-bg); color: var(--header-color); }
 .mesafacil-welcome::after { position: absolute; top: -95px; right: 100px; width: 285px; height: 285px; border: 1px solid rgba(255,255,255,.12); border-radius: 50%; content: ''; }
-.mesafacil-kicker { color: #748b70; font-size: 9px; font-weight: 700; letter-spacing: 1.7px; }
+.mesafacil-kicker { color: var(--kicker-fg); font-size: 9px; font-weight: 700; letter-spacing: 1.7px; }
 .mesafacil-welcome .mesafacil-kicker { color: #c8d6b4; }
 .mesafacil-welcome h1 { margin: 12px 0 7px; color: #fffefa !important; font-size: clamp(25px, 3vw, 34px); letter-spacing: -1.7px !important; }
 .mesafacil-welcome p { max-width: 520px; margin: 0; color: #d6e0d6; font-size: 12px; line-height: 1.7; }
 .welcome-mark { z-index: 1; display: grid; width: 78px; height: 78px; place-items: center; border: 1px solid rgba(255,255,255,.25); border-radius: 50%; color: #d4ef83; font-size: 36px; }
 .mesafacil-section-heading { display: flex; align-items: end; justify-content: space-between; margin: 38px 0 19px; }
-.mesafacil-section-heading h2 { margin: 5px 0 0; color: #26352c; font-size: 22px; letter-spacing: -.9px; }
-.mesafacil-current-user { color: #788078; font-size: 10px; }
-.mesafacil-current-user strong { color: #34473a; }
+.mesafacil-section-heading h2 { margin: 5px 0 0; color: var(--body-fg); font-size: 22px; letter-spacing: -.9px; }
+.mesafacil-current-user { color: var(--current-user-fg); font-size: 10px; }
+.mesafacil-current-user strong { color: var(--body-fg); }
 .mesafacil-app-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
-.mesafacil-app-card { display: flex; min-height: 218px; flex-direction: column; padding: 21px 21px 17px; border: 1px solid #e8e7de; border-radius: 4px; background: #fffefa; box-shadow: 0 9px 24px rgba(31,46,37,.035); }
+.mesafacil-app-card { display: flex; min-height: 218px; flex-direction: column; padding: 21px 21px 17px; border: 1px solid var(--card-border); border-radius: 4px; background: var(--card-bg); box-shadow: 0 9px 24px rgba(31,46,37,.035); }
 .app-card-top { display: flex; align-items: center; justify-content: space-between; }
-.app-card-icon { display: grid; width: 38px; height: 38px; place-items: center; border-radius: 50%; background: #edf1e5; color: #315c43; font-size: 20px; }
-.app-card-mode { color: #7c866f; font-size: 8px; font-weight: 700; letter-spacing: 1px; }
-.mesafacil-app-card h3 { margin: 16px 0 6px; color: #24342a; font-size: 17px; font-weight: 700; letter-spacing: -.5px; }
-.mesafacil-app-card p { margin: 0 0 14px; color: #737a72; font-size: 11px; line-height: 1.6; }
+.app-card-icon { display: grid; width: 38px; height: 38px; place-items: center; border-radius: 50%; background: var(--icon-bg); color: var(--link-fg); font-size: 20px; }
+.app-card-mode { color: var(--muted-fg); font-size: 8px; font-weight: 700; letter-spacing: 1px; }
+.mesafacil-app-card h3 { margin: 16px 0 6px; color: var(--body-fg); font-size: 17px; font-weight: 700; letter-spacing: -.5px; }
+.mesafacil-app-card p { margin: 0 0 14px; color: var(--muted-fg); font-size: 11px; line-height: 1.6; }
 .app-card-actions { display: flex; align-items: center; gap: 14px; margin-top: auto; padding-top: 13px; border-top: 1px solid #efeee7; }
-.app-card-primary { display: flex; flex: 1; align-items: center; justify-content: space-between; color: #315c43; font-size: 11px; font-weight: 700; text-decoration: none; }
-.app-card-primary:hover { color: #19372b; }
-.app-card-primary span { color: #72915f; font-size: 17px; }
-.app-card-add { color: #778077; font-size: 10px; text-decoration: none; }
-.app-card-add:hover { color: #19372b; text-decoration: underline; }
-.mesafacil-empty-state { padding: 42px; border: 1px solid #e8e7de; background: #fffefa; text-align: center; }
-.mesafacil-empty-state > span { color: #638356; font-size: 28px; }
+.app-card-primary { display: flex; flex: 1; align-items: center; justify-content: space-between; color: var(--link-fg); font-size: 11px; font-weight: 700; text-decoration: none; }
+.app-card-primary:hover { color: var(--link-hover-color); }
+.app-card-primary span { color: var(--kicker-fg); font-size: 17px; }
+.app-card-add { color: var(--muted-fg); font-size: 10px; text-decoration: none; }
+.app-card-add:hover { color: var(--link-hover-color); text-decoration: underline; }
+.mesafacil-empty-state { padding: 42px; border: 1px solid var(--card-border); background: var(--empty-state-bg); color: var(--body-fg); text-align: center; }
+.mesafacil-empty-state > span { color: var(--link-fg); font-size: 28px; }
 .mesafacil-empty-state h2 { margin: 10px 0 5px; font-size: 19px; }
-.mesafacil-empty-state p { color: #737a72; font-size: 12px; }
+.mesafacil-empty-state p { color: var(--muted-fg); font-size: 12px; }
 
 @media (max-width: 900px) {
   .mesafacil-app-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }

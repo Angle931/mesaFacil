@@ -6,7 +6,7 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.db.models.deletion import ProtectedError
-from django.test import RequestFactory, SimpleTestCase, TestCase
+from django.test import RequestFactory, SimpleTestCase, TestCase, override_settings
 from django.utils import timezone
 
 from ..admin import ClienteAdmin, ClienteAdminForm, MesaAdmin, ReservaAdmin
@@ -467,6 +467,10 @@ class ReservaTests(TestCase):
                     self.nueva(codigo_confirmacion=codigo).save()
 
 
+@override_settings(STORAGES={
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+})
 class ReservaAdminTests(TestCase):
     def test_admin_permite_editar_reserva_sin_eliminarla(self):
         modelo_admin = admin.site.get_model_admin(Reserva)

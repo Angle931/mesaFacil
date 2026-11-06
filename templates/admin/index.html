@@ -35,8 +35,10 @@
                   Revisa las reservas registradas y consulta sus datos y estado.
                 {% elif model.object_name == "Mesa" %}
                   Registra mesas y actualiza su capacidad o disponibilidad.
+                {% elif model.object_name == "User" or model.object_name == "Group" %}
+                  Administra las cuentas y los permisos de acceso al panel del restaurante.
                 {% else %}
-                  Consulta la información de contacto asociada a las reservas.
+                  Consulta y administra la información de {{ model.name|lower }}.
                 {% endif %}
               </p>
               <div class="app-card-actions">

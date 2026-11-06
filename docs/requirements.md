@@ -336,13 +336,13 @@ Completado:
   sin copias cuando los datos normalizados son equivalentes y sin reutilización
   automática por teléfono.
 - Pruebas funcionales y concurrentes ejecutadas satisfactoriamente sobre
-  PostgreSQL: 115 pruebas en total, incluidas 11 de concurrencia con conexiones
+  PostgreSQL: 124 pruebas en total, incluidas 11 de concurrencia con conexiones
   independientes.
 - `Mesa` y `Cliente` registrados en Django Admin; `Reserva` permite consulta
-  y edición mediante servicios, sin altas ni eliminación. Las correcciones
-  administrativas indicadas abajo siguen pendientes.
+  y edición mediante servicios, sin altas ni eliminación. El Admin respeta los
+  permisos de edición y muestra errores esperados sin guardar cambios parciales.
 - Flujo público de consulta, selección de mesa, registro y confirmación
-  implementado en formularios, vista y plantillas; cobertura HTTP por ampliar.
+  implementado y cubierto con pruebas HTTP de respuestas y persistencia.
 - Workflow CI/CD definido para construir y probar una imagen con PostgreSQL 17,
   transferir esa misma imagen entre jobs y preparar su publicación en GHCR y
   solicitud de despliegue mediante Deploy Hook. Su ejecución y configuración
@@ -350,9 +350,8 @@ Completado:
 
 Pendiente:
 
-- Corregir los permisos de edición y la presentación de errores de negocio
-  en Django Admin, y su compatibilidad visual con Light, Dark y Auto.
-- Ampliar las pruebas HTTP de permisos, errores administrativos y flujo público.
+- Revisar visualmente el Admin en los modos Light, Dark y Auto, incluyendo
+  cambios del tema del sistema, listados y formularios.
 - Verificar las referencias inmutables de las acciones, activar y ejecutar CI/CD
   en GitHub, configurar GHCR y el secret del Deploy Hook y comprobar el despliegue
   real en Render; proteger main exigiendo CI antes del merge.
